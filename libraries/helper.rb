@@ -28,16 +28,17 @@ module Teamcity
     def get_json (uri)
 
       req = build_request uri
-      res = Net::HTTP.start(uri.host, uri.port) { |http|
+      ssl = uri.port == 443 ? true : false
+      res = Net::HTTP.start(uri.host, uri.port, :use_ssl => ssl) { |http|
         http.request(req)
       }
 
-     if res.is_a?(Net::HTTPSuccess)
+      if res.is_a?(Net::HTTPSuccess)
         JSON.parse(res.body)
-     else
-       Chef::Log.debug "Server returned code #{res.code}"
-       raise Teamcity::Exceptions::InvalidServerResponse
-     end
+      else
+        Chef::Log.debug "Server returned code #{res.code}"
+        raise Teamcity::Exceptions::InvalidServerResponse
+      end
     end
 
     def get_file(uri,destination)
@@ -52,7 +53,8 @@ module Teamcity
         end
       end
       Chef::Log.info "Downloading file to #{destination}. This may take a while..."
-      Net::HTTP.start(uri.host, uri.port) { |http|
+      ssl = uri.port == 443 ? true : false
+      Net::HTTP.start(uri.host, uri.port, :use_ssl => ssl) { |http|
         Chef::Log.debug "Starting HTTP session..."
         http.request req do |response|
           Chef::Log.debug "Getting HTTP Response"
@@ -96,7 +98,7 @@ module Teamcity
     end
 
     def build_uri(path,params)
-      uri = URI("http://#{@server}:#{@port}/httpAuth/#{path}")
+      uri = URI("https://#{@server}:#{@port}/httpAuth/#{path}")
       uri.query = build_query_string(params) unless params.nil?
       uri
     end
@@ -110,7 +112,14 @@ module Teamcity
     def download_all(destination)
       build_info = find_build_by_version(@new_resource.build_type,@new_resource.version)
       build_id =  build_info['id']
-      path = "repository/downloadAll/#{@new_resource.build_type}/#{build_id}:id/artifacts.zip"
+      if @new_resource.filename != nil
+        pre_version = @new_resource.pre_version != nil ? @new_resource.pre_version : ""
+        extension = @new_resource.extension != nil ? @new_resource.extension : "zip"
+        filename = @new_resource.filename != nil ? @new_resource.filename : "artifact"
+        branch = @new_resource.branch != nil ? "-#{@new_resource.branch}-" : ""
+        artifact = "#{filename}#{branch}#{pre_version}#{@new_resource.version}.#{extension}"
+      end
+      path = "repository/download/#{@new_resource.build_type}/.lastSuccessful/#{artifact}"
       get_file(build_uri(path,nil),"#{destination}")
     end
 

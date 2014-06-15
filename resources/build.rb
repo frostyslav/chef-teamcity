@@ -20,7 +20,11 @@
 actions :download
 
 attribute :build_type, :required => true, :kind_of => String
+attribute :pre_version, :kind_of => [String]
 attribute :version, :kind_of => [String]
+attribute :extension, :kind_of => [String]
+attribute :filename, :kind_of => [String]
+attribute :branch, :kind_of => [String]
 attribute :overwrite, :kind_of => [TrueClass,FalseClass], :default => false
 attribute :destination, :kind_of => String, :required => true
 attribute :connection, :kind_of => Hash, :default => {}
